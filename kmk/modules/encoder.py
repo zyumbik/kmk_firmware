@@ -112,6 +112,9 @@ class BaseEncoder:
 
 
 class GPIOEncoder(BaseEncoder):
+
+    ENCODER_PINS = {}
+
     def __init__(self, pin_a, pin_b, pin_button=None, is_inverted=False, divisor=None):
         super().__init__(is_inverted)
 
@@ -119,14 +122,26 @@ class GPIOEncoder(BaseEncoder):
         # on the encoder is defined by 2 or 4 pulses
         self.divisor = divisor
 
-        self.pin_a = EncoderPin(pin_a)
-        self.pin_b = EncoderPin(pin_b)
+        self.pin_a = self.init_pin(pin_a)
+        self.pin_b = self.init_pin(pin_b)
+
+        # add button if provided
         self.pin_button = (
             EncoderPin(pin_button, button_type=True) if pin_button is not None else None
         )
 
         self._state = (self.pin_a.get_value(), self.pin_b.get_value())
         self._start_state = self._state
+
+    def init_pin(self, pin):
+        # add pin to global pins dict if not there yet
+        # setdefault can't be used without the condition because
+        # it still creates an item, causing an error
+        current_pin = GPIOEncoder.ENCODER_PINS.get(pin)
+        if current_pin is not None:
+            return current_pin
+        else:
+            return GPIOEncoder.ENCODER_PINS.setdefault(pin, EncoderPin(pin))
 
     def button_event(self):
         if self.pin_button:
@@ -137,6 +152,7 @@ class GPIOEncoder(BaseEncoder):
                     self.on_button_do(self.get_state())
 
 
+# GPIO encoder pin
 class EncoderPin:
     def __init__(self, pin, button_type=False):
         self.pin = pin
